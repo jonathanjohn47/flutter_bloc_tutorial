@@ -6,10 +6,11 @@
 
 ## Project Status
 
-- **Stage:** Just started. Default `flutter create` counter app still in place.
+- **Stage:** Default `flutter create` counter app still in `lib/main.dart` (not yet wired to Bloc). First Cubit written and compiling.
 - **Dependencies installed:** `flutter_bloc: ^9.1.1`, `equatable: ^2.0.8` (added to `pubspec.yaml`, `pub get` run).
-- **lib/ contents:** only `lib/main.dart` (default StatefulWidget counter, not yet touched).
-- **No BLoC/Cubit code written yet.**
+- **Folder structure decided:** feature-first Clean Architecture (`lib/features/<feature>/presentation|domain|data/...` + `lib/core/`). User declined a deep-dive into the reasoning for each layer and accepted the structure as given — do not re-litigate this unless user asks.
+- **lib/ contents:** `lib/main.dart` (default StatefulWidget counter, not yet touched) + new `lib/features/counter/presentation/bloc/counter_cubit.dart` containing a working `CounterCubit`.
+- **`CounterCubit` written and compiling** (see Session 3). Not yet wired into `main.dart`.
 
 ---
 
@@ -19,10 +20,14 @@
 - **Prop drilling problem:** understands that passing state through constructors across screens forces every intermediate widget to forward data it doesn't care about, coupling unrelated widgets.
 - **Why business logic shouldn't live in a widget's State class:** correctly reasoned (after simplification, without testing framing) that counting logic tied to `_MyHomePageState` only exists because that widget exists — pulling it into a standalone class lets multiple screens share it without duplication.
 - **Cubit notification model (conceptual):** correctly identified, in his own words, that a Cubit runs a stream and widgets subscribe to it; the Cubit — not the widget — decides when a rebuild-triggering value is emitted. This is the core mental shift from `setState` (widget-initiated) to Cubit (state-holder-initiated).
+- **Cubit constructor / initial state:** wrote `CounterCubit() : super(0)` correctly on the first try — understands that `Cubit`'s own constructor requires an initial state to be passed up via `super(...)`.
+- **Debugging an unresolved-symbol error:** given the analyzer message "Classes can only extend other classes" (with an offer to auto-generate a blank `Cubit` class), user correctly diagnosed — once prompted to check — that this meant `Cubit` wasn't recognized, i.e. missing `import 'package:flutter_bloc/flutter_bloc.dart';`. Reinforce this pattern later: "IDE offers to create a class with the name you used" is a strong signal of an unresolved import, not a real type error.
 
 ### Concepts Partially Understood
 - **InheritedWidget / Provider:** given a plain-language explanation (state placed in an ancestor, descendants pull it via `BuildContext` lookup instead of props being pushed down) and told this is what `BlocProvider` / `context.read<T>()` will later use. Not yet reinforced with hands-on use — revisit briefly when `BlocProvider` is introduced.
 - **GetX comparison:** user has prior GetX experience (global reactive controllers/service locator). Flagged as a useful reference point for later contrasting GetX's approach vs. Bloc's approach — has not yet been discussed in depth.
+
+- **Why `emit()` instead of direct state mutation:** asked twice (once right after the exercise was assigned, once after the code compiled) — **user has not yet answered this**. Do not assume understanding here; re-ask explicitly at the start of next session before moving on to `BlocProvider`/`BlocBuilder`.
 
 ### Concepts Not Yet Covered
 - Cubit syntax/API specifics (`extends Cubit<int>`, `emit()`, constructor `super(0)`)
@@ -54,14 +59,14 @@
 
 ## Current Exercises
 
-- **In progress:** User was given the exercise of writing `CounterCubit` themselves (extend `Cubit<int>`, constructor with initial state `0`, `increment()` method that emits `state + 1`) in a new file (location left to user's judgment, e.g. `lib/counter_cubit.dart`). **User had not yet submitted an attempt when this session ended.** Next session should pick up by asking for that attempt before proceeding.
-- **Pending (after Cubit exercise):** Wire `CounterCubit` into `main.dart` using `BlocProvider` and `BlocBuilder`, replacing `setState`. Then eventually progress to Bloc (Events/States) per learning order.
+- **Completed:** `CounterCubit` exercise (extends `Cubit<int>`, constructor with initial state `0`, `increment()` emitting `state + 1`) — written by the user at `lib/features/counter/presentation/bloc/counter_cubit.dart`, debugged (missing import), now compiling cleanly.
+- **Next up:** Before moving to `BlocProvider`/`BlocBuilder`, re-ask the still-unanswered "why `emit()` instead of direct state mutation" question. Then wire `CounterCubit` into `main.dart` using `BlocProvider` and `BlocBuilder`, replacing `setState`. Then eventually progress to Bloc (Events/States) per learning order.
 
 ---
 
 ## Important Discoveries / Debugging Insights
 
-- (none yet — no code has been run or debugged this session)
+- **"Classes can only extend other classes" + IDE offering "Create class 'X'"** is the analyzer's way of saying the superclass name is unresolved — almost always a missing import, not a genuine type-hierarchy problem. Worth reusing as a general debugging heuristic later.
 
 ---
 
@@ -72,6 +77,8 @@
 | 2026-07-01 | `pubspec.yaml` | Added `flutter_bloc` and `equatable` dependencies |
 | 2026-07-01 | `context.md` | Created — initial memory file |
 | 2026-07-01 | `context.md` | Updated after teaching session covering prop drilling, InheritedWidget/Provider (conceptual), separation of business logic, and Cubit's stream-based notification model |
+| 2026-07-01 | `lib/features/counter/presentation/bloc/counter_cubit.dart` | Created by user: `CounterCubit extends Cubit<int>` with `super(0)` constructor and `increment()` emitting `state + 1`. Fixed missing `flutter_bloc` import that caused an unresolved-superclass error. |
+| 2026-07-01 | `context.md` | Updated after Session 3 (folder structure decision, CounterCubit exercise completed + debugged) |
 
 ---
 
@@ -88,3 +95,10 @@
 - Discussed why business logic (the "add 1" rule) shouldn't live inside a widget's `State` class. Initial framing used testing as the motivating example — this did NOT work, user has no testing background and got confused/discouraged. Reframed successfully using a "second screen needs the same logic" scenario instead. **Lesson for future sessions: avoid testing analogies with this user until Bloc Testing is explicitly reached.**
 - Introduced the concept of a Cubit as a plain, screen-independent class holding state, and its stream-based notification model (Cubit emits, widgets subscribe) as the replacement for `setState`. User correctly explained this back in their own words.
 - Assigned exercise: write a `CounterCubit` (extends `Cubit<int>`, initial state 0, `increment()` emitting `state + 1`). User has not yet attempted/submitted this — pick up here next session.
+
+### 2026-07-01 (Session 3)
+- User asked to see the "industry standard" Bloc folder structure before writing any code. Given the feature-first Clean Architecture layout (`features/<name>/presentation|domain|data`, `core/`) as a reference. User explicitly declined the anatomy/reasoning discussion for it ("I don't want to do the anatomy of folder structures... I will accept it as it is") — accepted the structure at face value. **Do not force this discussion again unless user brings it up.**
+- User wrote `CounterCubit` themselves at `lib/features/counter/presentation/bloc/counter_cubit.dart`: `extends Cubit<int>`, `CounterCubit() : super(0)`, `increment()` calling `emit(state + 1)` — correct on the substance the first time.
+- Hit a real compile error: analyzer said "Classes can only extend other classes" and offered to auto-generate a class named `Cubit`. Walked user through debugging via the actual error message rather than guessing; user correctly diagnosed (once prompted to check) that the `flutter_bloc` import was missing. Added `import 'package:flutter_bloc/flutter_bloc.dart';` and the error cleared.
+- Asked (twice) why `emit()` is used instead of directly mutating `state` — **user has not answered this yet**, conversation moved to debugging instead. Must re-ask before proceeding to `BlocProvider`/`BlocBuilder`.
+- Session ended here at user's request ("that's for today"). Changes committed to git.
